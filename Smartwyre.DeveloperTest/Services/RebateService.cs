@@ -5,7 +5,12 @@ namespace Smartwyre.DeveloperTest.Services;
 
 public class RebateService : IRebateService
 {
-    public CalculateRebateResult Calculate(CalculateRebateRequest request)
+    /*
+     * Modified the method Calculate() under RebateService.cs
+    Removed the clutter, made the code more readable.
+    Have Not implemented try, catch block for the time being.
+     * */
+    public CalculateRebateResult CalculateOld(CalculateRebateRequest request)
     {
         var rebateDataStore = new RebateDataStore();
         var productDataStore = new ProductDataStore();
@@ -96,4 +101,45 @@ public class RebateService : IRebateService
 
         return result;
     }
+
+    public CalculateRebateResult Calculate(CalculateRebateRequest request)
+    {
+        var rebateDataStore = new RebateDataStore();
+        var productDataStore = new ProductDataStore();
+
+        Rebate rebate = rebateDataStore.GetRebate(request.RebateIdentifier);
+        Product product = productDataStore.GetProduct(request.ProductIdentifier);
+
+        var result = new CalculateRebateResult();
+
+        out int rebateAmount = 0;
+
+        switch (rebate.Incentive)
+        {
+            case IncentiveType.FixedCashAmount:
+                IIncentiveValidator validator = new FixedCashAmountValidator();
+                result.Success = validator.Validate(rebate, request, out rebateAmount);
+                break;
+
+            case IncentiveType.FixedRateRebate:
+                IIncentiveValidator validator = new FixedRateRebateValidator();
+                result.Success = validator.Validate(rebate, request, out rebateAmount);
+                break;
+
+            case IncentiveType.AmountPerUom:
+                IIncentiveValidator validator = new AmountPerUomValidator();
+                result.Success = validator.Validate(rebate, request, out rebateAmount);
+                break;
+        }
+
+        if (result.Success)
+        {
+            var storeRebateDataStore = new RebateDataStore();
+            storeRebateDataStore.StoreCalculationResult(rebate, rebateAmount);
+        }
+
+        return result;
+    }
+}
+
 }
